@@ -7,6 +7,7 @@ function cancel(mode,url){return new Promise((resolve,reject)=>{const Elm=load(p
  const s=await server(),base=`http://127.0.0.1:${s.address().port}`;
  try{
   for(const mode of ["debug","optimize"]){
+   const property=await run(path.join("build",`property-${mode}.js`),"PropertyWorker",{});assert.equal(property.reports[0].cases,8192);assert.equal(property.reports[0].failures,0);
    const file=path.join("build",`http-${mode}.js`);
    let r=await run(file,"HttpWorker",{url:base+"/ok",limit:100,timeoutMs:2000,truncate:false,discardRedirectBody:false});assert.equal(JSON.stringify(r.reports[0].bytes),"[111,107]");
    r=await run(file,"HttpWorker",{url:base+"/large",limit:8,timeoutMs:2000,truncate:true,discardRedirectBody:false});assert.equal(r.reports[0].bodyKind,"truncated");assert.equal(r.reports[0].bytes.length,8);
