@@ -23,7 +23,7 @@ application messages through `Platform.sendToApp`.
 ## 2. Public surface
 
 ```elm
-type Operation                         -- opaque { slot, generation }
+type Operation                         -- opaque manager-minted scalar
 
 type alias Callbacks msg =
     { onStarted : Operation -> msg
@@ -48,22 +48,20 @@ private. `cancel` is idempotent.
 
 ```elm
 type alias State =
-    { nextSlot : Int
-    , generations : Dict Int Int
+    { nextOperation : Int
     , active : Dict Int Active
     }
 
 type alias Active =
-    { generation : Int
-    , pid : Process.Id
+    { pid : Process.Id
     , onFinished : Result Error Response -> appMsg
     }
 ```
 
 Start handling is serialized by the manager mailbox:
 
-1. allocate `slot = nextSlot` and increment its generation (never reuse a pair);
-2. construct opaque `Operation slot generation`;
+1. allocate the next inactive scalar operation number and advance the counter;
+2. construct opaque `Operation operationId`;
 3. spawn `send ... |> Task.onError ... |> Task.andThen (sendToSelf Completed)`;
 4. store `{ generation, pid, onFinished }` in `active`;
 5. only then send `onStarted operation` to the app;
@@ -75,15 +73,15 @@ to the manager loop, and `onSelfMsg` handles completion later.
 
 ## 4. Terminal races
 
-- **Completion first:** `Completed slot generation result` matches active,
+- **Completion first:** `Completed operationId result` matches active,
   removes ownership first, then sends exactly one `onFinished result`.
 - **Cancel first:** `Cancel operation` matches active, removes ownership first,
   then `Process.kill pid`; no app result is sent.
 - **Simultaneous:** manager mailbox serialization picks one of the two rules.
 - **Duplicate completion:** first removes active; all later messages no-op.
 - **Duplicate cancel:** first removes active; later commands no-op.
-- **Stale generation:** slot match without generation match no-ops. A late
-  completion/cancel cannot affect a reused slot.
+- **Stale operation:** completion/cancel for an absent operation no-ops. The
+  counter does not reuse an active scalar; wrap probes occupied keys before minting.
 - **Unknown operation:** no-op.
 
 At most one result follows one start; cancel-first yields none. Settled ownership
@@ -115,8 +113,10 @@ underlying `Scheduler.binding` kill function, which claims abandonment and calls
 AbortController/reader cleanup as specified by revision B. Physical Undici
 cleanup may lag; no completion is delivered after cancel wins.
 
-State lookup/insert/remove is `Dict` O(log active operations), independent of
-conversation history, chunks, sessions, or all prior operations. `onEffects`
+State retains one scalar counter plus the active `Dict`; memory is O(active), not
+O(all prior operations). Lookup/insert/remove is `Dict` O(log active operations).
+Counter wrap uses occupied-key probes so it cannot mint an active capability;
+this astronomically cold collision path is O(k log active), not falsely called O(1). `onEffects`
 folds only the current command batch with cons/reverse or tail recursion; it
 never scans `active` per command and never appends to an accumulator. Completion
 and cancel touch one slot.

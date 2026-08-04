@@ -15,7 +15,7 @@ import Task exposing (Task)
 
 
 type Operation
-    = Operation Int Int
+    = Operation Int
 
 
 type alias Callbacks msg =
@@ -59,21 +59,19 @@ cmdMap func cmd =
 
 
 type alias State msg =
-    { nextSlot : Int
-    , generations : Dict Int Int
+    { nextOperation : Int
     , active : Dict Int (Active msg)
     }
 
 
 type alias Active msg =
-    { generation : Int
-    , pid : Process.Id
+    { pid : Process.Id
     , onFinished : Operation -> Result Http.Error Http.Response -> msg
     }
 
 
 type SelfMsg
-    = Completed Int Int (Result Http.Error Http.Response)
+    = Completed Int (Result Http.Error Http.Response)
 
 
 type alias MyRouter msg =
@@ -83,8 +81,7 @@ type alias MyRouter msg =
 init : Task Never (State msg)
 init =
     Task.succeed
-        { nextSlot = 0
-        , generations = Dict.empty
+        { nextOperation = 0
         , active = Dict.empty
         }
 
@@ -110,34 +107,27 @@ applyCommand router command_ state =
     case command_ of
         Start callbacks requestTask ->
             let
-                slot =
-                    state.nextSlot
-
-                generation =
-                    Dict.get slot state.generations
-                        |> Maybe.withDefault 0
-                        |> (+) 1
+                operationId =
+                    nextUnusedOperation state.nextOperation state.active
 
                 operation =
-                    Operation slot generation
+                    Operation operationId
 
                 completionTask =
                     requestTask
                         |> Task.map Ok
                         |> Task.onError (Err >> Task.succeed)
-                        |> Task.andThen (Completed slot generation >> Platform.sendToSelf router)
+                        |> Task.andThen (Completed operationId >> Platform.sendToSelf router)
             in
             Process.spawn completionTask
                 |> Task.andThen
                     (\pid ->
                         let
                             next =
-                                { nextSlot = slot + 1
-                                , generations = Dict.insert slot generation state.generations
+                                { nextOperation = incrementOperation operationId
                                 , active =
-                                    Dict.insert slot
-                                        { generation = generation
-                                        , pid = pid
+                                    Dict.insert operationId
+                                        { pid = pid
                                         , onFinished = callbacks.onFinished
                                         }
                                         state.active
@@ -147,41 +137,56 @@ applyCommand router command_ state =
                             |> Task.andThen (\_ -> Task.succeed next)
                     )
 
-        Cancel (Operation slot generation) ->
-            case Dict.get slot state.active of
+        Cancel (Operation operationId) ->
+            case Dict.get operationId state.active of
                 Just active ->
-                    if active.generation == generation then
-                        let
-                            next =
-                                { state | active = Dict.remove slot state.active }
-                        in
-                        Process.kill active.pid
-                            |> Task.andThen (\_ -> Task.succeed next)
-
-                    else
-                        Task.succeed state
+                    let
+                        next =
+                            { state | active = Dict.remove operationId state.active }
+                    in
+                    Process.kill active.pid
+                        |> Task.andThen (\_ -> Task.succeed next)
 
                 Nothing ->
                     Task.succeed state
 
 
 onSelfMsg : MyRouter msg -> SelfMsg -> State msg -> Task Never (State msg)
-onSelfMsg router (Completed slot generation result) state =
-    case Dict.get slot state.active of
+onSelfMsg router (Completed operationId result) state =
+    case Dict.get operationId state.active of
         Just active ->
-            if active.generation == generation then
-                let
-                    operation =
-                        Operation slot generation
+            let
+                operation =
+                    Operation operationId
 
-                    next =
-                        { state | active = Dict.remove slot state.active }
-                in
-                Platform.sendToApp router (active.onFinished operation result)
-                    |> Task.andThen (\_ -> Task.succeed next)
-
-            else
-                Task.succeed state
+                next =
+                    { state | active = Dict.remove operationId state.active }
+            in
+            Platform.sendToApp router (active.onFinished operation result)
+                |> Task.andThen (\_ -> Task.succeed next)
 
         Nothing ->
             Task.succeed state
+
+
+maxOperation : Int
+maxOperation =
+    9007199254740990
+
+
+incrementOperation : Int -> Int
+incrementOperation operationId =
+    if operationId >= maxOperation then
+        0
+
+    else
+        operationId + 1
+
+
+nextUnusedOperation : Int -> Dict Int (Active msg) -> Int
+nextUnusedOperation candidate active =
+    if Dict.member candidate active then
+        nextUnusedOperation (incrementOperation candidate) active
+
+    else
+        candidate
