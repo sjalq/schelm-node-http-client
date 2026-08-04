@@ -8,5 +8,6 @@
   "nodePlatform": "linux-x64",
   "nodeBinarySha256": "82e1a4da51b1870fc16495482f47c9bbb634dd02559f80ab5385090123cb034a",
   "publicPackageSeedSha256": "59c3cd6ba9126cb77d1e4b4f09e0c7b91a32bb3ee9b7e40be424f482657cb74e",
-  "claim": "Binary hashes prove artifact integrity; bit-reproducibility of compiler and Node binaries is not claimed."
+  "claim": "Binary hashes prove artifact integrity; bit-reproducibility of compiler and Node binaries is not claimed.",
+  "elmCompilerBundleSha256": "2f7ac9ad53d7c2c5a8b0abd3b9b528aa8f0b0e23a17ab14444faff895ce5ec79"
 }
