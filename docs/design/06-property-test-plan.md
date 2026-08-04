@@ -338,10 +338,24 @@ kills all descendant process groups and prints unfinished shard/seed. Local
 servers bind loopback ephemeral ports and close on success, failure, signal, and
 timeout. No retry hides a deterministic failure.
 
-## 14. Release criterion
+## 14. Staged release criteria
 
-Release and harness cutover require every property layer, debug/optimize matrix,
-artifact gate, offline provenance check, frozen differential suite, poison-route
-end-to-end test, 200-request complexity gate, and bounded supervisor run to pass.
-A skipped or zero-case suite is failure. Streaming/SSE/LLM tests are absent
-because those features are absent, not silently implemented without design.
+**Package-complete gate (this repository):** executable reference/state tests,
+real debug/optimize application workers, compiled Process.kill/deadline cases,
+raw-header and gzip/deflate/Brotli local-server fixtures, body-partition tests,
+artifact hook scans, offline compiler/Node/public-seed provenance, deterministic
+package archive, cold/warm isolated builds, real compression memory rows at
+concurrency 1/8/32/200, deterministic 200-request/10,000-chunk instrumentation,
+real-server high-chunk variants, formatting, and bounded shard execution must all
+pass. A skipped or zero-case suite is failure.
+
+**Integration-complete gate (explicitly pending; cannot run in this package):**
+the separate agent-harness integration branch must add and pass the frozen,
+hash-verified legacy `http-kernel.js`/WebFetch differential, poisoned old host
+route, direct Elm `RunWebFetch` ownership/interruption tests, full harness Elm/GUI/
+host/format suites, and proof that production WebFetch no longer reaches
+`Rpc.Http`, `Http:fetch`, or `httpFetch`. Package completion does not claim these
+integration gates passed and does not authorize deployment or harness cutover.
+
+Streaming/SSE/LLM tests are absent because those features are absent, not
+silently implemented without design.
