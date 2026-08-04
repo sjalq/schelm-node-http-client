@@ -191,6 +191,7 @@ function runBufferedHttp(options) {
   }
 
   async function start() {
+    if (phase === "Abandoned" || phase === "Absent") return;
     let now;
     try { now = ops.nowMonotonic(); }
     catch (error) { fail("unknown-failure", "clock", error, false); return; }

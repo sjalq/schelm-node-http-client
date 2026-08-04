@@ -3,7 +3,7 @@ import Elm.Kernel.Bytes exposing (width)
 import Elm.Kernel.List exposing (fromArray, toArray)
 import Elm.Kernel.Scheduler exposing (binding, fail, succeed)
 */
-/* generated; canonical-sha256 6a472c1744d2537004eabe6b014afc400ed896b6db10be701e057113229cd2fd; fixture=false */
+/* generated; canonical-sha256 12bd4c629403c2a02aa7bf304cf753fe32d114c12b9f5fcb741184a1a95d48aa; fixture=false */
 const FOLLOW_REDIRECT = new Set([301, 302, 303, 307, 308]);
 const BODYLESS = new Set([204, 304]);
 const ALLOWED_CODES = new Set([
@@ -194,6 +194,7 @@ function runBufferedHttp(options) {
   }
 
   async function start() {
+    if (phase === "Abandoned" || phase === "Absent") return;
     let now;
     try { now = ops.nowMonotonic(); }
     catch (error) { fail("unknown-failure", "clock", error, false); return; }

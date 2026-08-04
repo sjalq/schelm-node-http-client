@@ -1,0 +1,6 @@
+"use strict";
+const fs=require("node:fs");const production=["src/Elm/Kernel/SchelmHttp.js","build/http-debug.js","build/http-optimize.js","build/cancel-debug.js","build/cancel-optimize.js"],forbidden=["@fixture","$schelmFixtureEvents","$schelmFixtureObserve","fakeFetch","faultPlan","diagnosticsRegistry","cleanupTimer","SchelmHttpFixture"];
+for(const file of production){if(!fs.existsSync(file))throw Error(`missing ${file}`);const body=fs.readFileSync(file,"utf8");for(const token of forbidden)if(body.includes(token))throw Error(`${file} contains fixture token ${token}`);}
+const fixture=fs.readFileSync("fixtures/package/src/Elm/Kernel/SchelmHttpFixture.js","utf8");for(const token of ["@fixture","$schelmFixtureEvents","TerminalClaimed","CallbackQueued"])if(!fixture.includes(token))throw Error(`fixture positive control missing ${token}`);
+for(const file of ["build/http-debug.js","build/http-optimize.js"])for(const token of ["runBufferedHttp","ResponseNoBody","ReadPending","CallbackQueued"])if(!fs.readFileSync(file,"utf8").includes(token))throw Error(`${file} missing canonical machine ${token}`);
+console.log("artifact gate passed: canonical machine present, fixture hooks absent from production");
