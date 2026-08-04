@@ -109,23 +109,28 @@ can keep redirect policy ordinary and visible Elm:
 
 ```elm
 followOne allowed limit deadline response =
-    case locationHeader response of
-        Nothing ->
-            Task.fail MissingLocation
+    if List.member (Http.status response) [ 301, 302, 303, 307, 308 ] then
+        case locationHeader response of
+            Nothing ->
+                Task.fail MissingLocation
 
-        Just reference ->
-            case Http.resolve (Http.responseUrl response) reference of
-                Err _ ->
-                    Task.fail InvalidLocation
+            Just reference ->
+                case Http.resolve (Http.responseUrl response) reference of
+                    Err _ ->
+                        Task.fail InvalidLocation
 
-                Ok next ->
-                    if Http.allows allowed next then
-                        -- Reuse the one total deadline. Add an application hop
-                        -- limit around this recipe before making it recursive.
-                        Http.send allowed deadline (Http.get next limit)
+                    Ok next ->
+                        if Http.allows allowed next then
+                            -- Reuse the one total deadline. Add an application hop
+                            -- limit around this recipe before making it recursive.
+                            Http.send allowed deadline (Http.get next limit)
 
-                    else
-                        Task.fail RedirectOriginNotAllowed
+                        else
+                            Task.fail RedirectOriginNotAllowed
+
+    else
+        -- 200, 300, 304, 305, and 306 are responses, not redirects to follow.
+        Task.succeed response
 ```
 
 For an intentionally allowed cross-origin redirect, construct a new finite

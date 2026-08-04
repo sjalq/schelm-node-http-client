@@ -104,24 +104,42 @@ followOne origins deadline firstRequest =
         |> Task.mapError httpError
         |> Task.andThen
             (\response ->
-                case location response of
-                    Nothing ->
-                        Task.fail "missing-location"
+                if followsRedirect (Http.status response) then
+                    case location response of
+                        Nothing ->
+                            Task.fail "missing-location"
 
-                    Just reference ->
-                        case Http.resolve (Http.responseUrl response) reference of
-                            Err _ ->
-                                Task.fail "invalid-location"
+                        Just reference ->
+                            case Http.resolve (Http.responseUrl response) reference of
+                                Err _ ->
+                                    Task.fail "invalid-location"
 
-                            Ok target ->
-                                if Http.allows origins target then
-                                    Http.send origins deadline (Http.get target (limit32 ()))
-                                        |> Task.mapError httpError
-                                        |> Task.andThen decodeName
+                                Ok target ->
+                                    if Http.allows origins target then
+                                        Http.send origins deadline (Http.get target (limit32 ()))
+                                            |> Task.mapError httpError
+                                            |> Task.andThen decodeName
 
-                                else
-                                    Task.fail "origin-not-allowed"
+                                    else
+                                        Task.fail "origin-not-allowed"
+
+                else
+                    Task.succeed ("not-followed-" ++ String.fromInt (Http.status response))
             )
+
+
+followsRedirect : Int -> Bool
+followsRedirect status =
+    status
+        == 301
+        || status
+        == 302
+        || status
+        == 303
+        || status
+        == 307
+        || status
+        == 308
 
 
 limit32 : () -> Http.ResponseLimit
