@@ -40,7 +40,7 @@ sendCancelable :
 cancel : Operation -> Cmd msg
 ```
 
-`Operation` is manager-minted. Callers cannot choose ids or generations. It is
+`Operation` is manager-minted. Callers cannot choose operation ids. It is
 comparable only through package operations if ever needed; representation stays
 private. `cancel` is idempotent.
 
@@ -63,7 +63,7 @@ Start handling is serialized by the manager mailbox:
 1. allocate the next inactive scalar operation number and advance the counter;
 2. construct opaque `Operation operationId`;
 3. spawn `send ... |> Task.onError ... |> Task.andThen (sendToSelf Completed)`;
-4. store `{ generation, pid, onFinished }` in `active`;
+4. store `{ pid, onFinished }` in `active`;
 5. only then send `onStarted operation` to the app;
 6. process the next manager mailbox item.
 
@@ -129,7 +129,7 @@ Blocking package tests:
 - debug and optimized real compiler effect-manager apps;
 - synchronous completion proves started-before-finished;
 - cancel-before-completion produces no finish;
-- double completion/cancel and stale generation isolation;
+- double completion/cancel and stale operation isolation;
 - 200 concurrent operations with exact start/finish counts and empty final State;
 - real hanging HTTP cancellation closes logical ownership and emits no result;
 - `Cmd.map` identity/composition observations;

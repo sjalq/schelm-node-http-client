@@ -10,3 +10,13 @@ try{cp.execFileSync("git",["clone","-q",bundle,temp]);const authorized=cp.execFi
 if(sha(elm)!==tool.elmCompilerBinarySha256)throw Error("compiler hash mismatch");if(sha(nodeArchive)!==tool.nodeArchiveSha256)throw Error("Node archive hash mismatch");if(sha(seed)!==tool.publicPackageSeedSha256)throw Error("seed hash mismatch");if(cp.execFileSync(elm,["--version"],{encoding:"utf8"}).trim()!==tool.elmLanguageVersion)throw Error("compiler version mismatch");if(process.version!==`v${tool.nodeVersion}`)throw Error(`run tests with Node ${tool.nodeVersion}, got ${process.version}`);const unpackHash=cp.execFileSync("sh",["-c",`xz -dc '${nodeArchive}' | sha256sum`],{encoding:"utf8"}).trim().split(/\s+/)[0];if(unpackHash!==tool.nodeBinarySha256)throw Error("Node archive payload hash mismatch");
 const text=fs.readFileSync("scripts/prepare-overlay.cjs","utf8");if(text.includes(".elm/"))throw Error("ambient Elm cache reference");
 console.log("offline provenance passed: compiler commit/tree ancestry, Elm binary, Node archive/executable, and public seed verified");
+const release=provenance.package_release_source;
+const packageTree=cp.execFileSync("git",["show","-s","--format=%T",release.commit],{encoding:"utf8"}).trim();
+if(packageTree!==release.tree)throw Error("package release commit/tree drift");
+const releaseRoots=["elm.json","LICENSE","README.md","src/Schelm","src/Elm"];
+const rootsDrift=cp.execFileSync("git",["diff","--name-only",release.commit,"--",...releaseRoots],{encoding:"utf8"}).trim();
+if(rootsDrift)throw Error(`package release roots drift from ${release.commit}: ${rootsDrift}`);
+const archiveEvidence=JSON.parse(cp.execFileSync(process.execPath,["tests/archive-repro.cjs"],{encoding:"utf8"}).trim());
+if(archiveEvidence.sourceSha256!==release.source_digest_sha256)throw Error("package release source digest drift");
+if(archiveEvidence.archiveSha256!==release.archive_sha256)throw Error("package release archive hash drift");
+console.log("package release commit/tree/source/archive provenance verified");

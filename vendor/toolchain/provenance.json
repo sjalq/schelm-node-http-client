@@ -24,12 +24,12 @@
   },
   "package_release_source": {
     "repository": "https://github.com/sjalq/schelm-node-http-client.git",
-    "commit": "a245d3d8a7a5b0c22eae82c42c3529e10e28d3b9",
-    "tree": "d348a442e80b912b5e2b2d288941d81f4f9ba7aa",
+    "commit": "fd67083875cb1ef3a913de07217a7b6de7ea2d3e",
+    "tree": "3c18b117bb53fc27c4b927f1904b8aafbf9191ec",
     "archive_recipe": "deterministic package roots: elm.json LICENSE README.md src/Schelm src/Elm; tar --sort=name --mtime=@1704067200 --owner=0 --group=0 --numeric-owner -czf",
-    "source_digest_sha256": "68b0872740a925e5fae21a090d899e183f0344c0ae31bdb19dbc414bcebd0e01",
-    "archive_sha256": "55d84c93bc800165d147076123f54f63bbe000c352dd13041417ad5906d28d68",
-    "note": "The recorded commit/tree is the last package implementation/test commit before provenance and audit documentation. The recorded deterministic source/archive hashes were measured by the full package audit at e5329acce0fd56ae3429249d97295bbc783a12f0; later provenance-only amendments do not alter package archive roots."
+    "source_digest_sha256": "78985a898f6bea23c02854ddab7715c9a773ebc5ea08cf4057309ba29dbcb9be",
+    "archive_sha256": "46d12c9dd5ec807b2b79a6ae45c7e202fc8b047da1e18187c453dc57042b26ce",
+    "note": "This is the deterministic package release archive over elm.json, LICENSE, README.md, src/Schelm, and src/Elm. It is distinct from the harness repository git-archive used to vendor the exact integration commit."
   },
   "legacy_differential": {
     "status": "integration-pending",
