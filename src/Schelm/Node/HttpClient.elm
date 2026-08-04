@@ -347,8 +347,19 @@ request config =
 
         bodyWidth =
             bodyByteLength config.body
+
+        bodyIsEmptyConstructor =
+            case config.body of
+                Empty ->
+                    True
+
+                Utf8 _ ->
+                    False
+
+                Binary _ ->
+                    False
     in
-    if (methodValue == "GET" || methodValue == "HEAD") && bodyWidth > 0 then
+    if (methodValue == "GET" || methodValue == "HEAD") && not bodyIsEmptyConstructor then
         Err MethodDoesNotAllowBody
 
     else if bodyWidth > 8 * 1024 * 1024 then
@@ -361,7 +372,7 @@ request config =
                 , url = urlValue
                 , headers = List.map (\(RequestHeader name value) -> { name = name, value = value }) config.headers
                 , body = bodyBytes config.body
-                , hasBody = bodyWidth > 0
+                , hasBody = not bodyIsEmptyConstructor
                 , responseLimit = limitValue
                 , truncate = config.overLimit == TruncateOverLimit
                 , discardRedirectBody = config.discardRedirectBody
