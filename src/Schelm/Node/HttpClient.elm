@@ -1,14 +1,14 @@
 module Schelm.Node.HttpClient exposing
     ( Url, UrlError(..), url, resolve, urlToRequestString, urlForDiagnostic
     , Origin, OriginSet, origin, originSet, allows
-    , Method, MethodError(..), method
-    , RequestHeader, RequestHeaderError(..), requestHeader
+    , Method, MethodError(..), method, getMethod, postMethod
+    , RequestHeader, RequestHeaderError(..), requestHeader, jsonRequestHeader
     , ResponseHeader, responseHeaderName, responseHeaderValue
-    , Body, emptyBody, utf8Body, bytesBody, bodyByteLength
+    , Body, emptyBody, utf8Body, jsonBody, bytesBody, bodyByteLength
     , ResponseLimit, LimitError(..), responseLimit
     , Timeout, TimeoutError(..), timeout, Deadline, startDeadline
-    , OverLimit(..), Request, RequestError(..), request
-    , Response, ResponseBody(..), status, statusText, headers, setCookies, responseUrl, responseBody
+    , OverLimit(..), Request, RequestError(..), request, get, withHeader, withBody
+    , Response, ResponseBody(..), BodyError(..), status, statusText, headers, setCookies, responseUrl, responseBody, bodyBytes, bodyText, bodyJson
     , Error, ErrorKind(..), errorKind, errorMessage, errorCode
     , send
     )
@@ -21,22 +21,25 @@ API.
 
 @docs Url, UrlError, url, resolve, urlToRequestString, urlForDiagnostic
 @docs Origin, OriginSet, origin, originSet, allows
-@docs Method, MethodError, method
-@docs RequestHeader, RequestHeaderError, requestHeader
+@docs Method, MethodError, method, getMethod, postMethod
+@docs RequestHeader, RequestHeaderError, requestHeader, jsonRequestHeader
 @docs ResponseHeader, responseHeaderName, responseHeaderValue
-@docs Body, emptyBody, utf8Body, bytesBody, bodyByteLength
+@docs Body, emptyBody, utf8Body, jsonBody, bytesBody, bodyByteLength
 @docs ResponseLimit, LimitError, responseLimit
 @docs Timeout, TimeoutError, timeout, Deadline, startDeadline
-@docs OverLimit, Request, RequestError, request
-@docs Response, ResponseBody, status, statusText, headers, setCookies, responseUrl, responseBody
+@docs OverLimit, Request, RequestError, request, get, withHeader, withBody
+@docs Response, ResponseBody, BodyError, status, statusText, headers, setCookies, responseUrl, responseBody, bodyBytes, bodyText, bodyJson
 @docs Error, ErrorKind, errorKind, errorMessage, errorCode
 @docs send
 
 -}
 
 import Bytes exposing (Bytes)
+import Bytes.Decode as BytesDecode
 import Bytes.Encode as BytesEncode
 import Elm.Kernel.SchelmHttp
+import Json.Decode as JsonDecode exposing (Decoder)
+import Json.Encode as JsonEncode
 import Task exposing (Task)
 
 
@@ -159,6 +162,19 @@ type ResponseBody
     | DiscardedRedirectBody
 
 
+{-| Why a response body cannot be decoded as requested.
+
+`BodyWasTruncated` and `RedirectBodyWasDiscarded` are deliberate request
+outcomes, not malformed data. Raise the limit or change the request policy.
+
+-}
+type BodyError
+    = BodyWasTruncated { receivedAtLeast : Int }
+    | RedirectBodyWasDiscarded
+    | InvalidUtf8
+    | InvalidJson JsonDecode.Error
+
+
 type Error
     = Error { kind : ErrorKind, site : String, code : Maybe String, message : String }
 
@@ -224,6 +240,9 @@ allows (OriginSet values) (Url value) =
     List.any ((==) value.origin) values
 
 
+{-| Validate an HTTP method. Prefer `getMethod` and `postMethod` for common
+requests.
+-}
 method : String -> Result MethodError Method
 method raw =
     let
@@ -238,6 +257,20 @@ method raw =
 
     else
         Ok (Method upper)
+
+
+{-| The validated GET method.
+-}
+getMethod : Method
+getMethod =
+    Method "GET"
+
+
+{-| The validated POST method.
+-}
+postMethod : Method
+postMethod =
+    Method "POST"
 
 
 requestHeader : String -> String -> Result RequestHeaderError RequestHeader
@@ -257,6 +290,13 @@ requestHeader rawName value =
 
     else
         Ok (RequestHeader name value)
+
+
+{-| The JSON content type header.
+-}
+jsonRequestHeader : RequestHeader
+jsonRequestHeader =
+    RequestHeader "content-type" "application/json"
 
 
 responseHeaderName : ResponseHeader -> String
@@ -281,6 +321,14 @@ utf8Body value =
             BytesEncode.encode (BytesEncode.string value)
     in
     boundedBody Utf8 bytes
+
+
+{-| Encode a JSON value as a bounded UTF-8 request body. Add
+`jsonRequestHeader` explicitly so content-type policy stays visible.
+-}
+jsonBody : JsonEncode.Value -> Result RequestError Body
+jsonBody value =
+    utf8Body (JsonEncode.encode 0 value)
 
 
 bytesBody : Bytes -> Result RequestError Body
@@ -371,12 +419,66 @@ request config =
                 { method = methodValue
                 , url = urlValue
                 , headers = List.map (\(RequestHeader name value) -> { name = name, value = value }) config.headers
-                , body = bodyBytes config.body
+                , body = encodeBody config.body
                 , hasBody = not bodyIsEmptyConstructor
                 , responseLimit = limitValue
                 , truncate = config.overLimit == TruncateOverLimit
                 , discardRedirectBody = config.discardRedirectBody
                 }
+
+
+{-| Build the ordinary bounded GET request. It rejects an oversized response
+rather than silently truncating it. Use `request` when you need headers,
+truncation, or redirect-body discard.
+-}
+get : Url -> ResponseLimit -> Request
+get (Url urlValue) (ResponseLimit limitValue) =
+    Request
+        { method = "GET"
+        , url = urlValue
+        , headers = []
+        , body = encodeBody emptyBody
+        , hasBody = False
+        , responseLimit = limitValue
+        , truncate = False
+        , discardRedirectBody = False
+        }
+
+
+{-| Add one already validated request header.
+-}
+withHeader : RequestHeader -> Request -> Request
+withHeader (RequestHeader name value) (Request data) =
+    Request { data | headers = { name = name, value = value } :: data.headers }
+
+
+{-| Replace the one request body, rechecking method and hard-size invariants.
+-}
+withBody : Body -> Request -> Result RequestError Request
+withBody newBody (Request data) =
+    let
+        empty =
+            case newBody of
+                Empty ->
+                    True
+
+                _ ->
+                    False
+    in
+    if (data.method == "GET" || data.method == "HEAD") && not empty then
+        Err MethodDoesNotAllowBody
+
+    else if bodyByteLength newBody > 8 * 1024 * 1024 then
+        Err RequestBodyTooLarge
+
+    else
+        Ok
+            (Request
+                { data
+                    | body = encodeBody newBody
+                    , hasBody = not empty
+                }
+            )
 
 
 status : Response -> Int
@@ -407,6 +509,45 @@ responseUrl (Response value) =
 responseBody : Response -> ResponseBody
 responseBody (Response value) =
     value.body
+
+
+{-| Return bytes only when the complete response body is available.
+-}
+bodyBytes : Response -> Result BodyError Bytes
+bodyBytes response =
+    case responseBody response of
+        Complete bytes ->
+            Ok bytes
+
+        Truncated details ->
+            Err (BodyWasTruncated { receivedAtLeast = details.decodedLengthAtLeast })
+
+        DiscardedRedirectBody ->
+            Err RedirectBodyWasDiscarded
+
+
+{-| Strictly decode a complete UTF-8 response body. Invalid UTF-8 is an error;
+this helper never inserts replacement characters deliberately.
+-}
+bodyText : Response -> Result BodyError String
+bodyText response =
+    bodyBytes response
+        |> Result.andThen
+            (\bytes ->
+                BytesDecode.decode (BytesDecode.string (Bytes.width bytes)) bytes
+                    |> Result.fromMaybe InvalidUtf8
+            )
+
+
+{-| Decode JSON from a complete, valid UTF-8 response body.
+-}
+bodyJson : Decoder value -> Response -> Result BodyError value
+bodyJson decoder response =
+    bodyText response
+        |> Result.andThen
+            (JsonDecode.decodeString decoder
+                >> Result.mapError InvalidJson
+            )
 
 
 errorKind : Error -> ErrorKind
@@ -440,8 +581,8 @@ boundedBody ctor bytes =
         Ok (ctor bytes)
 
 
-bodyBytes : Body -> Bytes
-bodyBytes value =
+encodeBody : Body -> Bytes
+encodeBody value =
     case value of
         Empty ->
             BytesEncode.encode (BytesEncode.sequence [])

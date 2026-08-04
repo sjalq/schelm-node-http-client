@@ -1,6 +1,14 @@
 effect module Schelm.Node.HttpClient.Cancelable where { command = MyCmd } exposing (Operation, Callbacks, send, attempt, cancel)
 
-{-| Cancellable command surface over `Schelm.Node.HttpClient.send`.
+{-| Cancellable commands over `Schelm.Node.HttpClient.send`.
+
+Use the broad `Task` API when ordinary task composition owns the lifetime. Use
+this module when application state must retain an `Operation` and stop it later,
+such as on user interrupt, owner shutdown, or replacement by newer work.
+
+`onStarted` is delivered before `onFinished` can be delivered. If `cancel` wins,
+`onFinished` is not delivered. Logical ownership ends immediately; physical
+network cleanup may finish later.
 
 @docs Operation, Callbacks, send, attempt, cancel
 
@@ -14,26 +22,39 @@ import Schelm.Node.HttpClient as Http
 import Task exposing (Task)
 
 
+{-| A live cancellable operation minted by this manager. It is an operation
+handle, not a security capability.
+-}
 type Operation
     = Operation Int
 
 
+{-| Messages for operation ownership and terminal delivery.
+-}
 type alias Callbacks msg =
     { onStarted : Operation -> msg
     , onFinished : Operation -> Result Http.Error Http.Response -> msg
     }
 
 
+{-| Start one HTTP request and report the operation before any terminal result.
+-}
 send : Callbacks msg -> Http.OriginSet -> Http.Deadline -> Http.Request -> Cmd msg
 send callbacks origins deadline request =
     attempt callbacks (Http.send origins deadline request)
 
 
+{-| Run a composed HTTP task with the same cancellation ownership. This is
+useful for an explicit redirect chain that reuses one deadline.
+-}
 attempt : Callbacks msg -> Task Http.Error Http.Response -> Cmd msg
 attempt callbacks task =
     command (Start callbacks task)
 
 
+{-| End logical ownership and ask the runtime to abandon remaining work.
+Repeated or stale cancellation is harmless.
+-}
 cancel : Operation -> Cmd msg
 cancel operation =
     command (Cancel operation)
