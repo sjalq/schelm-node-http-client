@@ -1,8 +1,8 @@
-effect module Schelm.Node.HttpClient.Cancelable where { command = MyCmd } exposing (Operation, Callbacks, send, cancel)
+effect module Schelm.Node.HttpClient.Cancelable where { command = MyCmd } exposing (Operation, Callbacks, send, attempt, cancel)
 
 {-| Cancellable command surface over `Schelm.Node.HttpClient.send`.
 
-@docs Operation, Callbacks, send, cancel
+@docs Operation, Callbacks, send, attempt, cancel
 
 -}
 
@@ -26,7 +26,12 @@ type alias Callbacks msg =
 
 send : Callbacks msg -> Http.OriginSet -> Http.Deadline -> Http.Request -> Cmd msg
 send callbacks origins deadline request =
-    command (Start callbacks origins deadline request)
+    attempt callbacks (Http.send origins deadline request)
+
+
+attempt : Callbacks msg -> Task Http.Error Http.Response -> Cmd msg
+attempt callbacks task =
+    command (Start callbacks task)
 
 
 cancel : Operation -> Cmd msg
@@ -35,21 +40,19 @@ cancel operation =
 
 
 type MyCmd msg
-    = Start (Callbacks msg) Http.OriginSet Http.Deadline Http.Request
+    = Start (Callbacks msg) (Task Http.Error Http.Response)
     | Cancel Operation
 
 
 cmdMap : (a -> b) -> MyCmd a -> MyCmd b
 cmdMap func cmd =
     case cmd of
-        Start callbacks origins deadline request ->
+        Start callbacks task ->
             Start
                 { onStarted = callbacks.onStarted >> func
                 , onFinished = \operation result -> func (callbacks.onFinished operation result)
                 }
-                origins
-                deadline
-                request
+                task
 
         Cancel operation ->
             Cancel operation
@@ -105,7 +108,7 @@ applyCommands router commands state =
 applyCommand : MyRouter msg -> MyCmd msg -> State msg -> Task Never (State msg)
 applyCommand router command_ state =
     case command_ of
-        Start callbacks origins deadline request ->
+        Start callbacks requestTask ->
             let
                 slot =
                     state.nextSlot
@@ -119,7 +122,7 @@ applyCommand router command_ state =
                     Operation slot generation
 
                 completionTask =
-                    Http.send origins deadline request
+                    requestTask
                         |> Task.map Ok
                         |> Task.onError (Err >> Task.succeed)
                         |> Task.andThen (Completed slot generation >> Platform.sendToSelf router)
