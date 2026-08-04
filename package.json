@@ -13,7 +13,7 @@
     "test:workers": "node tests/run-generated-workers.cjs",
     "test:artifact": "node tests/artifact-gate.cjs",
     "test:archive": "node tests/archive-repro.cjs",
-    "test:perf": "node tests/perf/concurrency-gate.cjs",
+    "test:perf": "node tests/perf/concurrency-gate.cjs && node tests/perf/real-memory-gate.cjs && node tests/perf/real-chunk-gate.cjs",
     "test": "npm run check:assembly && npm run test:toolchain && npm run build && npm run test:node && npm run test:workers && npm run test:artifact && npm run test:archive && npm run test:perf"
   }
 }

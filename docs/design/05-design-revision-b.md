@@ -149,16 +149,18 @@ prefix bytes are copied; at least one excess byte is observed; then logical
 terminal/truncation is claimed before abort/cancel.
 
 This is **not a strict process-heap cap**. Undici/zlib/V8 may allocate encoded
-buffers, decompressor state, and a decoded chunk before package code sees it.
-The pinned Node artifact receives a measured transient-overhead contract:
-for fixture encodings and chunk schedules up to the package hard limit, peak
-`heapUsed + external + arrayBuffers` above retained package bytes must be no more
-than the recorded baseline plus **4 MiB per live response or 2x decoded limit,
-whichever is larger**. This is an empirical regression envelope, not a security
-proof. If the pinned runtime exceeds it, CI fails and release is blocked; the
-limit is not loosened silently. Inputs crafted beyond measured fixtures may use
-more transient memory. A future strict heap guarantee requires a reviewed
-lower-level transport/decompressor with bounded output buffers.
+buffers, decompressor state, generated Elm values, and a decoded chunk before
+package code sees it. The pinned Node artifact receives a measured regression
+contract, not a universal bound: isolated real Fetch fixtures cover gzip,
+deflate, and Brotli at concurrency 1/8/32/200 with a 64 KiB retained prefix and
+8x decoded expansion. Peak `heapUsed + external + arrayBuffers`, sampled every
+millisecond, after subtracting process baseline and retained prefixes must fit
+**4 MiB per live response or 2x decoded limit, whichever is larger, plus a fixed
+96 MiB generated-Elm/runtime/sampling tolerance**. Exact rows are emitted by the gate. If the
+pinned runtime exceeds it, CI fails; the envelope is not loosened silently.
+Different encodings, inputs, limits, scheduling, or runtime versions may use
+more memory. A future strict heap guarantee requires a reviewed lower-level
+transport/decompressor with bounded output buffers.
 
 `Content-Length` never proves decoded size and is ignored for cap decisions.
 Truncation stops at first proven excess and reports only `limit + 1` lower bound.
