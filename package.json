@@ -1,0 +1,19 @@
+{
+  "name": "schelm-node-http-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": { "node": "24.4.1" },
+  "scripts": {
+    "assemble": "node scripts/assemble-kernels.cjs",
+    "check:assembly": "node scripts/assemble-kernels.cjs --check",
+    "build": "node scripts/build-fixtures.cjs",
+    "test:toolchain": "node tests/toolchain-gate.cjs",
+    "test:node": "node --test --test-timeout=60000 tests/node/*.test.cjs",
+    "test:workers": "node tests/run-generated-workers.cjs",
+    "test:artifact": "node tests/artifact-gate.cjs",
+    "test:archive": "node tests/archive-repro.cjs",
+    "test:perf": "node tests/perf/concurrency-gate.cjs",
+    "test": "npm run check:assembly && npm run test:toolchain && npm run build && npm run test:node && npm run test:workers && npm run test:artifact && npm run test:archive && npm run test:perf"
+  }
+}

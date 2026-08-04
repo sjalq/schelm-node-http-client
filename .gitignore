@@ -1,0 +1,4 @@
+/build/
+/elm-stuff/
+**/elm-stuff/
+*.log

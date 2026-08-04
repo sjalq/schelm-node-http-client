@@ -1,0 +1,12 @@
+{
+  "elmCompilerRepository": "https://github.com/sjalq/schelm-elm-compiler.git",
+  "elmCompilerCommit": "76bbe44424106c96f915cb24cd7f50d69f5cee0e",
+  "elmCompilerBinarySha256": "69987adf7062562b6e6dfd60b6709be3a06feeb90b096b9c84f673f2b97d8654",
+  "elmLanguageVersion": "0.19.2",
+  "baseElmCommit": "48befde196cbcbdf459114e36c02b52c49b58050",
+  "nodeVersion": "24.4.1",
+  "nodePlatform": "linux-x64",
+  "nodeBinarySha256": "82e1a4da51b1870fc16495482f47c9bbb634dd02559f80ab5385090123cb034a",
+  "publicPackageSeedSha256": "59c3cd6ba9126cb77d1e4b4f09e0c7b91a32bb3ee9b7e40be424f482657cb74e",
+  "claim": "Binary hashes prove artifact integrity; bit-reproducibility of compiler and Node binaries is not claimed."
+}
