@@ -10,7 +10,11 @@ const end = canonical.indexOf("\nmodule.exports =");
 if (start < 0 || end < 0) throw new Error("canonical machine markers missing");
 const machine = canonical.slice(start, end);
 const fixtureMarker = /\s*\/\* @fixture \*\/ return ops\.observe\(event, facts \|\| \{\}\);/g;
-const productionMachine = machine.replace(fixtureMarker, " return undefined;");
+const productionMachine = machine
+  .replace(fixtureMarker, " return undefined;")
+  .replace(/^\s*observe\([^\n]*\);\s*$/gm, "")
+  .replace("function observe(event, facts) { return undefined;\n  }", "function $productionNoop() {}")
+  .replace(/observe\(/g, "$productionNoop(");
 const imports = `/*\nimport Elm.Kernel.Bytes exposing (width)\nimport Elm.Kernel.List exposing (fromArray, toArray)\nimport Elm.Kernel.Scheduler exposing (binding, fail, succeed)\n*/\n`;
 const helpers = `
 function $rawUrlValue(u) {

@@ -36,8 +36,7 @@ function runBufferedHttp(options) {
   let chunks = [];
   let kept = 0;
 
-  function observe(event, facts) { return undefined;
-  }
+  function $productionNoop() {}
 
   function clearOwnedTimer() {
     if (timer !== null) {
@@ -70,7 +69,7 @@ function runBufferedHttp(options) {
   function claim(next) {
     if (phase === "CallbackQueued" || phase === "Abandoned" || phase === "Absent") return false;
     phase = next;
-    observe("TerminalClaimed", { phase: next });
+
     return true;
   }
 
@@ -85,7 +84,7 @@ function runBufferedHttp(options) {
     chunks = [];
     kept = 0;
     if (ownedReader) safeDetached(function () { return ops.releaseReader(ownedReader); });
-    observe("CallbackQueued", { kind });
+
     try {
       if (kind === "success") ops.deliverSuccess(value);
       else ops.deliverFailure(value);
@@ -97,13 +96,13 @@ function runBufferedHttp(options) {
     const error = constructiveError(kind, site, exception);
     if (cancel) cleanupTransport(); else clearOwnedTimer();
     phase = "CallbackQueued";
-    observe("CallbackQueued", { kind: "failure", errorKind: kind, site });
+
     try { ops.deliverFailure(error); } catch (_) {}
   }
 
   function abandon() {
     if (!claim("Abandoned")) return;
-    observe("Killed", {});
+
     cleanupTransport();
     phase = "Absent";
   }
@@ -141,7 +140,7 @@ function runBufferedHttp(options) {
       let packet;
       pendingRead = true;
       phase = "ReadPending";
-      observe("ReadDispatched", { kept });
+
       try { packet = await ops.read(reader); }
       catch (error) {
         pendingRead = false;
@@ -159,7 +158,7 @@ function runBufferedHttp(options) {
       const chunk = packet.value;
       const size = ops.chunkLength(chunk);
       if (!Number.isSafeInteger(size) || size < 0) { fail("unsupported-runtime", "read-body", null, true); return; }
-      observe("PhysicalChunk", { size, kept });
+
       if (size === 0) { phase = "ReaderIdle"; continue; }
       const room = request.responseLimit - kept;
       if (size <= room) {
@@ -184,7 +183,7 @@ function runBufferedHttp(options) {
         const responseValue = ops.makeResponse(facts, "truncated", prefix, request.responseLimit + 1);
         cleanupTransport();
         phase = "CallbackQueued";
-        observe("CallbackQueued", { kind: "success", bodyKind: "truncated" });
+
         try { ops.deliverSuccess(responseValue); } catch (_) {}
       } else {
         fail("response-too-large", "read-body", null, true);
@@ -209,7 +208,7 @@ function runBufferedHttp(options) {
       }, delay);
     } catch (error) { fail("unknown-failure", "set-timer", error, true); return; }
     phase = "BeforeResponse";
-    observe("FetchDispatched", { delay });
+
     let fetchPromise;
     try { fetchPromise = ops.fetchManual(request, controller.signal); }
     catch (error) { fail("network-failure", "fetch", error, true); return; }
@@ -223,7 +222,7 @@ function runBufferedHttp(options) {
     let facts;
     try { facts = ops.responseFacts(response, request); }
     catch (error) { fail("unsupported-runtime", "response-facts", error, true); return; }
-    observe("PhysicalResponse", { status: facts.status });
+
     await readResponse(response, facts);
   }
 

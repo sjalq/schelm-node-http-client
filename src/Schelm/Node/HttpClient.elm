@@ -566,7 +566,14 @@ unique values =
 
 isTokenChar : Char -> Bool
 isTokenChar char =
-    Char.isAlphaNum char || String.contains (String.fromChar char) "!#$%&'*+-.^_`|~"
+    let
+        code =
+            Char.toCode char
+    in
+    (code >= 48 && code <= 57)
+        || (code >= 65 && code <= 90)
+        || (code >= 97 && code <= 122)
+        || String.contains (String.fromChar char) "!#$%&'*+-.^_`|~"
 
 
 forbiddenHeader : String -> Bool
