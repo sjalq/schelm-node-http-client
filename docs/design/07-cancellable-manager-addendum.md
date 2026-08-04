@@ -119,7 +119,7 @@ Counter wrap uses occupied-key probes so it cannot mint an active capability;
 this astronomically cold collision path is O(k log active), not falsely called O(1). `onEffects`
 folds only the current command batch with cons/reverse or tail recursion; it
 never scans `active` per command and never appends to an accumulator. Completion
-and cancel touch one slot.
+and cancel touch one operation key.
 
 ## 7. Tests and artifacts
 
