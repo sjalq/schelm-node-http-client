@@ -1,0 +1,38 @@
+{
+  "compiler": {
+    "repository": "https://github.com/sjalq/schelm-elm-compiler.git",
+    "authorized_commit": "76bbe44424106c96f915cb24cd7f50d69f5cee0e",
+    "authorized_tree": "15033f85bf175de5a51de9e8167202d88a5667ed",
+    "bundle_head": "bb9bad307c369004751e840f9a50d0f97bdcff1b",
+    "bundle_head_tree": "4773e3a82ca7daa3f620d21d496357f9b827398b",
+    "relationship": "bundle_head is the direct child of authorized_commit; it adds compiler authorization-boundary tests. The executable is named and hashed as the authorized_commit artifact. The bundle contains and verifies both commit/tree objects.",
+    "bundle_sha256": "2f7ac9ad53d7c2c5a8b0abd3b9b528aa8f0b0e23a17ab14444faff895ce5ec79",
+    "binary_sha256": "69987adf7062562b6e6dfd60b6709be3a06feeb90b096b9c84f673f2b97d8654",
+    "claim": "Hashes prove artifact integrity and source ancestry/content; bit-reproducibility of the compiler binary is not claimed."
+  },
+  "node": {
+    "version": "24.4.1",
+    "platform": "linux-x64",
+    "compressed_archive": "node-v24.4.1-linux-x64.xz",
+    "compressed_archive_sha256": "af4edd929c751cdccfd63173c35a435d8ea96148342677def30acad79cc93215",
+    "executable_sha256": "82e1a4da51b1870fc16495482f47c9bbb634dd02559f80ab5385090123cb034a",
+    "claim": "Archive and unpacked executable integrity are verified offline; upstream build reproducibility is not claimed."
+  },
+  "public_package_seed": {
+    "archive": "public-packages-0.19.2.tar.gz",
+    "sha256": "59c3cd6ba9126cb77d1e4b4f09e0c7b91a32bb3ee9b7e40be424f482657cb74e"
+  },
+  "package_release_source": {
+    "repository": "https://github.com/sjalq/schelm-node-http-client.git",
+    "commit": "a245d3d8a7a5b0c22eae82c42c3529e10e28d3b9",
+    "tree": "d348a442e80b912b5e2b2d288941d81f4f9ba7aa",
+    "archive_recipe": "deterministic package roots: elm.json LICENSE README.md src/Schelm src/Elm; tar --sort=name --mtime=@1704067200 --owner=0 --group=0 --numeric-owner -czf",
+    "source_digest_sha256": "pending-verification-run",
+    "archive_sha256": "pending-verification-run",
+    "note": "The recorded commit/tree is the last package implementation/test commit before provenance and audit documentation. Later commits may change only provenance/tests/docs; the release gate recomputes and prints source/archive hashes from the final tree."
+  },
+  "legacy_differential": {
+    "status": "integration-pending",
+    "reason": "Frozen legacy WebFetch/http-kernel differential belongs to the separate agent-harness integration branch; no legacy artifact is claimed package-local."
+  }
+}
